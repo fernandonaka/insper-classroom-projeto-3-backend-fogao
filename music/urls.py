@@ -12,5 +12,8 @@ urlpatterns = [
     
     #rotas para mostrar todos os favoritos e todas as tracks
     path('favorite/artist/', views.favorite_artist_all),
-    path('favorite/track/', views.favorite_track_all)
+    path('favorite/track/', views.favorite_track_all),
+
+    path('api/token/', views.api_get_token),
+    path('api/users/', views.api_user),
 ]

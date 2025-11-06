@@ -10,13 +10,45 @@ from .serializers import (
     FavoriteArtistSerializer, FavoriteTrackSerializer
 )
 import requests
+from django.http import Http404, HttpResponseForbidden, JsonResponse
+from django.contrib.auth import authenticate
+from rest_framework.authtoken.models import Token
+from django.contrib.auth.models import User
 
+#------------PEGAR TOKEN------------
+@api_view(['POST'])
+def api_get_token(request):
+    try:
+        if request.method == 'POST':
+            username = request.data['username']
+            password = request.data['password']
+            user = authenticate(username=username, password=password)
 
+            if user is not None:
+                token, created = Token.objects.get_or_create(user=user)
+                return JsonResponse({"token":token.key})
+            else:
+                return HttpResponseForbidden()
+    except:
+        return HttpResponseForbidden()
+#PARA RODAR VER OS PASSOS 6 e 7 do HANDOUT 11
+#--------CRIAR USER--------
+@api_view(['POST'])
+def api_user(request):
+    if request.method == 'POST':
+        username = request.data['username']
+        email = request.data['email']
+        password = request.data['password']
+
+        user = User.objects.create_user(username, email, password)
+        user.save()
+        return Response(status=204)
+    
 # Create your views here.
 DEEZER = "https://api.deezer.com"
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def search_artists(request):
     q = request.query_params.get("q", "")
     if not q:
@@ -39,7 +71,7 @@ def search_artists(request):
 
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def search_tracks(request):
     q = request.query_params.get("q", "")
     if not q:
@@ -69,6 +101,7 @@ DEEZER_TRACK_URL  = "https://api.deezer.com/track/{id}/"
 
 # -------- ARTIST --------
 @api_view(["GET", "POST", "DELETE"])
+@permission_classes([IsAuthenticated])
 def favorite_artist(request, deezer_id: int):
     """
     POST   /favorite/artist/<deezer_id>/  -> cria (global)
@@ -84,6 +117,7 @@ def favorite_artist(request, deezer_id: int):
 
         fav, created = FavoriteArtist.objects.get_or_create(
             deezer_id=deezer_id,
+            user=request.user,
             defaults={
                 "name": data.get("name", ""),
                 "picture": data.get("picture_medium") or data.get("picture"),
@@ -95,28 +129,30 @@ def favorite_artist(request, deezer_id: int):
         return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
     if request.method == "DELETE":
-        deleted, _ = FavoriteArtist.objects.filter(deezer_id=deezer_id).delete()
+        deleted, _ = FavoriteArtist.objects.filter(user=request.user,deezer_id=deezer_id).delete()
         if deleted == 0:
             return Response({"detail": "Favorito não encontrado."}, status=404)
         return Response(status=204)
 
     # GET único
     try:
-        fav = FavoriteArtist.objects.get(deezer_id=deezer_id)
+        fav = FavoriteArtist.objects.get(user=request.user, deezer_id=deezer_id)
     except FavoriteArtist.DoesNotExist:
         return Response({"detail": "Favorito não encontrado."}, status=404)
     return Response(FavoriteArtistSerializer(fav).data)
 
 
 @api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def favorite_artist_all(request):
     """GET /favorite/artist/ -> lista global (sem usuário)"""
-    favorites = FavoriteArtist.objects.order_by("-created_at")
+    favorites = FavoriteArtist.objects.filter(user=request.user)
     return Response(FavoriteArtistSerializer(favorites, many=True).data)
 
 
 # -------- TRACK --------
 @api_view(["GET", "POST", "DELETE"])
+@permission_classes([IsAuthenticated])
 def favorite_track(request, deezer_id: int):
     """
     POST   /favorite/track/<deezer_id>/  -> cria (global)
@@ -131,6 +167,7 @@ def favorite_track(request, deezer_id: int):
 
         fav, created = FavoriteTrack.objects.get_or_create(
             deezer_id=deezer_id,
+            user=request.user,
             defaults={
                 "title": data.get("title", ""),
                 "artist_name": (data.get("artist") or {}).get("name", ""),
@@ -144,21 +181,22 @@ def favorite_track(request, deezer_id: int):
         return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
     if request.method == "DELETE":
-        deleted, _ = FavoriteTrack.objects.filter(deezer_id=deezer_id).delete()
+        deleted, _ = FavoriteTrack.objects.filter(user=request.user, deezer_id=deezer_id).delete()
         if deleted == 0:
             return Response({"detail": "Favorito não encontrado."}, status=404)
         return Response(status=204)
 
     # GET único
     try:
-        fav = FavoriteTrack.objects.get(deezer_id=deezer_id)
+        fav = FavoriteTrack.objects.get(user=request.user, deezer_id=deezer_id)
     except FavoriteTrack.DoesNotExist:
         return Response({"detail": "Favorito não encontrado."}, status=404)
     return Response(FavoriteTrackSerializer(fav).data)
 
 
 @api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def favorite_track_all(request):
     """GET /favorite/track/ -> lista global (sem usuário)"""
-    favorites = FavoriteTrack.objects.order_by("-created_at")
+    favorites = FavoriteTrack.objects.filter(user=request.user)
     return Response(FavoriteTrackSerializer(favorites, many=True).data)
