@@ -5,9 +5,9 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
-from .models import FavoriteArtist, FavoriteTrack
+from .models import FavoriteArtist, FavoriteTrack, FavoriteAlbum
 from .serializers import (
-    FavoriteArtistSerializer, FavoriteTrackSerializer
+    FavoriteAlbumSerializer, FavoriteArtistSerializer, FavoriteTrackSerializer
 )
 import requests
 from django.http import Http404, HttpResponseForbidden, JsonResponse
@@ -93,11 +93,35 @@ def search_tracks(request):
 
     return Response(tracks,status=status.HTTP_200_OK)
 
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def search_albums(request):
+    q = request.query_params.get("q", "")
+    if not q:
+        return Response([], status=200)
+    r = requests.get(f"{DEEZER}/search/album", params={"q": q}, timeout=10)
+    data = r.json().get("data", [])
+
+    #mapeia para um payload enxuto (id, nome, foto_)
+    albums = []
+    for it in data:
+        albums.append({
+                "deezer_id":it.get("id"),
+                "title":it.get("title"),
+                "artist": (it.get("artist") or {}).get("name"),
+                "cover": it.get("cover_medium"),
+                "raw_json": it
+            }
+        )
+    
+    return Response(albums, status=status.HTTP_200_OK)
+
 
 
 # --- Helpers Deezer (se já tiver no seu arquivo, pode reaproveitar) ---
 DEEZER_ARTIST_URL = "https://api.deezer.com/artist/{id}/"
 DEEZER_TRACK_URL  = "https://api.deezer.com/track/{id}/"
+DEEZER_ALBUM_URL  = "https://api.deezer.com/album/{id}/"
 
 # -------- ARTIST --------
 @api_view(["GET", "POST", "DELETE"])
@@ -200,3 +224,48 @@ def favorite_track_all(request):
     """GET /favorite/track/ -> lista global (sem usuário)"""
     favorites = FavoriteTrack.objects.filter(user=request.user)
     return Response(FavoriteTrackSerializer(favorites, many=True).data)
+
+# -------- ALBUM --------
+@api_view(["GET", "POST", "DELETE"])
+def favorite_album(request, deezer_id: int):
+    """
+    POST   /favorite/album/<deezer_id>/  -> cria (global)
+    DELETE /favorite/album/<deezer_id>/  -> remove (global)
+    GET    /favorite/album/<deezer_id>/  -> retorna 1 favorito (global)
+    """
+    if request.method == "POST":
+        r = requests.get(DEEZER_ALBUM_URL.format(id=deezer_id), timeout=10)
+        if r.status_code != 200:
+            return Response({"detail": "Deezer não encontrou esse álbum."}, status=404)
+        data = r.json()
+
+        fav, created = FavoriteAlbum.objects.get_or_create(
+            deezer_id=deezer_id,
+            defaults={
+                "title": data.get("title", ""),
+                "artist": (data.get("artist") or {}).get("name", ""),
+                "cover": data.get("cover_medium") or data.get("cover"),
+                "raw_json": data,
+            },
+        )
+        serializer = FavoriteAlbumSerializer(fav)
+        return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+    if request.method == "DELETE":
+        deleted, _ = FavoriteAlbum.objects.filter(deezer_id=deezer_id).delete()
+        if deleted == 0:
+            return Response({"detail": "Favorito não encontrado."}, status=404)
+        return Response(status=204)
+
+    # GET único
+    try:
+        fav = FavoriteAlbum.objects.get(deezer_id=deezer_id)
+    except FavoriteAlbum.DoesNotExist:
+        return Response({"detail": "Favorito não encontrado."}, status=404)
+    return Response(FavoriteAlbumSerializer(fav).data)
+
+@api_view(["GET"])
+def favorite_album_all(request):
+    """GET /favorite/album/ -> lista global (sem usuário)"""
+    favorites = FavoriteAlbum.objects.order_by("-created_at")
+    return Response(FavoriteAlbumSerializer(favorites, many=True).data)
