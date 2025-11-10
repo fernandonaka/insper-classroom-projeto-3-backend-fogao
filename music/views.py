@@ -108,7 +108,7 @@ def search_albums(request):
         albums.append({
                 "deezer_id":it.get("id"),
                 "title":it.get("title"),
-                "artist": (it.get("artist") or {}).get("name"),
+                "artist_name": (it.get("artist") or {}).get("name"),
                 "cover": it.get("cover_medium"),
                 "raw_json": it
             }
@@ -241,6 +241,7 @@ def favorite_album(request, deezer_id: int):
 
         fav, created = FavoriteAlbum.objects.get_or_create(
             deezer_id=deezer_id,
+            user=request.user,
             defaults={
                 "title": data.get("title", ""),
                 "artist": (data.get("artist") or {}).get("name", ""),
@@ -252,14 +253,14 @@ def favorite_album(request, deezer_id: int):
         return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
     if request.method == "DELETE":
-        deleted, _ = FavoriteAlbum.objects.filter(deezer_id=deezer_id).delete()
+        deleted, _ = FavoriteAlbum.objects.filter(user=request.user, deezer_id=deezer_id).delete()
         if deleted == 0:
             return Response({"detail": "Favorito não encontrado."}, status=404)
         return Response(status=204)
 
     # GET único
     try:
-        fav = FavoriteAlbum.objects.get(deezer_id=deezer_id)
+        fav = FavoriteAlbum.objects.get(user=request.user, deezer_id=deezer_id)
     except FavoriteAlbum.DoesNotExist:
         return Response({"detail": "Favorito não encontrado."}, status=404)
     return Response(FavoriteAlbumSerializer(fav).data)
@@ -267,5 +268,6 @@ def favorite_album(request, deezer_id: int):
 @api_view(["GET"])
 def favorite_album_all(request):
     """GET /favorite/album/ -> lista global (sem usuário)"""
-    favorites = FavoriteAlbum.objects.order_by("-created_at")
+    favorites = FavoriteAlbum.objects.filter(user=request.user)
     return Response(FavoriteAlbumSerializer(favorites, many=True).data)
+
