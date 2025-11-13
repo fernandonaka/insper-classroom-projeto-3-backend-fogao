@@ -40,9 +40,17 @@ def api_user(request):
         email = request.data['email']
         password = request.data['password']
 
-        user = User.objects.create_user(username, email, password)
-        user.save()
-        return Response(status=204)
+        user, created = User.objects.get_or_create(
+            username=username,
+            defaults={'email': email}
+        )
+        
+        if created:
+            user.set_password(password)
+            user.save()
+            return Response({"detail": "Usuário cadastrado com sucesso"},status=204)
+        
+        return Response({"detail": "Usuário já cadastrado"}, status=204)
     
 # Create your views here.
 DEEZER = "https://api.deezer.com"
