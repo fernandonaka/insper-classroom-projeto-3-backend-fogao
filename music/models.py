@@ -38,7 +38,7 @@ class FavoriteTrack(models.Model):
 
 class FavoriteAlbum(models.Model):
     # Removido o FK para user
-    deezer_id   = models.PositiveBigIntegerField(unique=True)
+    deezer_id   = models.PositiveBigIntegerField()
     title       = models.CharField(max_length=255)
     artist_name     = models.CharField(max_length=255)
     cover       = models.URLField(blank=True, null=True)

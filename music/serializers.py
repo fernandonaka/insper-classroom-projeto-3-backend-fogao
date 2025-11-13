@@ -16,7 +16,7 @@ class FavoriteTrackSerializer(serializers.ModelSerializer):
 class FavoriteAlbumSerializer(serializers.ModelSerializer):
     class Meta:
         model = FavoriteAlbum
-        fields = ["deezer_id", "album_title", "artist_name", "album_cover"]
+        fields = ["deezer_id", "title", "artist_name", "cover"]
 
 class ListTrackSerializer(serializers.ModelSerializer):
     class Meta:

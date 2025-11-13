@@ -294,6 +294,7 @@ def favorite_track_all(request):
 
 # -------- ALBUM --------
 @api_view(["GET", "POST", "DELETE"])
+@permission_classes([IsAuthenticated])
 def favorite_album(request, deezer_id: int):
     """
     POST   /favorite/album/<deezer_id>/  -> cria (global)
@@ -333,6 +334,7 @@ def favorite_album(request, deezer_id: int):
     return Response(FavoriteAlbumSerializer(fav).data)
 
 @api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def favorite_album_all(request):
     """GET /favorite/album/ -> lista global (sem usuário)"""
     favorites = FavoriteAlbum.objects.filter(user=request.user)
