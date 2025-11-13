@@ -25,8 +25,7 @@ SECRET_KEY = 'django-insecure-hv7z#ym5mt-n9sfs26@&us&=cq4q(78$-hz3y+)_qn%vsl@e=7
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['*']
-
+ALLOWED_HOSTS = ['insper-classroom-projeto-3-backend-fogao.onrender.com', 'localhost', '127.0.0.1', '0.0.0.0']
 
 # Application definition
 
