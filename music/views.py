@@ -5,9 +5,9 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
-from .models import FavoriteArtist, FavoriteTrack, FavoriteAlbum
+from .models import FavoriteArtist, FavoriteTrack, FavoriteAlbum, ListTrack
 from .serializers import (
-    FavoriteAlbumSerializer, FavoriteArtistSerializer, FavoriteTrackSerializer
+    FavoriteAlbumSerializer, FavoriteArtistSerializer, FavoriteTrackSerializer, ListTrackSerializer
 )
 import requests
 from django.http import Http404, HttpResponseForbidden, JsonResponse
@@ -46,6 +46,69 @@ def api_user(request):
     
 # Create your views here.
 DEEZER = "https://api.deezer.com"
+
+# --- Helpers Deezer (se já tiver no seu arquivo, pode reaproveitar) ---
+DEEZER_ARTIST_URL = "https://api.deezer.com/artist/{id}/"
+DEEZER_TRACK_URL  = "https://api.deezer.com/track/{id}/"
+DEEZER_ALBUM_URL  = "https://api.deezer.com/album/{id}/"
+
+#-------------LIST Track ------------- #PAREI AQUI (FAZENDO O LIST TRACK POST, GET e DELETE)
+@api_view(["GET", "POST", "DELETE"])
+@permission_classes([IsAuthenticated])
+def list_track(request, deezer_id:int):
+    """
+    POST   /list/<deezer_id>/  -> adiciona 1 track na lista (global)
+    DELETE /favorite/<deezer_id>/  -> remove 1 track listada (global)
+    GET    /favorite/<deezer_id>/  -> retorna 1 track listada (global)
+    """
+    if request.method == "POST":
+        r = requests.get(DEEZER_TRACK_URL.format(id=deezer_id), timeout=10)
+        if r.status_code != 200:
+            return Response({"detail": "Deezer não encontrou essa track."}, status=404)
+        data = r.json()
+
+        list_track, created = ListTrack.objects.get_or_create(
+            deezer_id=deezer_id,
+            user=request.user,
+            defaults={
+                "title": data.get("title", ""),
+                "artist_name": (data.get("artist") or {}).get("name", ""),
+                "album_title": (data.get("album") or {}).get("title"),
+                "album_cover": (data.get("album") or {}).get("cover_medium") or (data.get("album") or {}).get("cover"),
+                "preview_url": data.get("preview"),
+                "raw_json": data,
+            },
+        )
+        serializer = ListTrackSerializer(list_track)
+        return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+    if request.method == "DELETE":
+        deleted, _ = ListTrack.objects.filter(user=request.user, deezer_id=deezer_id).delete()
+        if deleted == 0:
+            return Response({"detail": "Música não encontrada na lista."}, status=404)
+        return Response(status=204)
+
+    # GET único
+    try:
+        list_track = ListTrack.objects.get(user=request.user, deezer_id=deezer_id)
+    except ListTrack.DoesNotExist:
+        return Response({"detail": "Música não encontrada na lista."}, status=404)
+    return Response(ListTrackSerializer(list_track).data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def list_track_all(request):
+    """GET /favorite/track/ -> lista global (sem usuário)"""
+    list_tracks = ListTrack.objects.filter(user=request.user)
+    return Response(FavoriteTrackSerializer(list_tracks, many=True).data)
+    
+
+
+
+
+#-------------------SEARCH-----------------
+
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -118,10 +181,6 @@ def search_albums(request):
 
 
 
-# --- Helpers Deezer (se já tiver no seu arquivo, pode reaproveitar) ---
-DEEZER_ARTIST_URL = "https://api.deezer.com/artist/{id}/"
-DEEZER_TRACK_URL  = "https://api.deezer.com/track/{id}/"
-DEEZER_ALBUM_URL  = "https://api.deezer.com/album/{id}/"
 
 # -------- ARTIST --------
 @api_view(["GET", "POST", "DELETE"])
@@ -244,7 +303,7 @@ def favorite_album(request, deezer_id: int):
             user=request.user,
             defaults={
                 "title": data.get("title", ""),
-                "artist": (data.get("artist") or {}).get("name", ""),
+                "artist_name": (data.get("artist") or {}).get("name", ""),
                 "cover": data.get("cover_medium") or data.get("cover"),
                 "raw_json": data,
             },

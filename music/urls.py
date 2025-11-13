@@ -11,11 +11,15 @@ urlpatterns = [
     path('favorite/artist/<int:deezer_id>/', views.favorite_artist),
     path('favorite/track/<int:deezer_id>/', views.favorite_track),
     path('favorite/album/<int:deezer_id>/', views.favorite_album),
+    path('list/<int:deezer_id>/', views.list_track),
+
+    
     
     #rotas para mostrar todos os favoritos e todas as tracks
     path('favorite/artist/', views.favorite_artist_all),
     path('favorite/track/', views.favorite_track_all),
     path('favorite/album/', views.favorite_album_all),
+    path('list/', views.list_track_all),
   
     path('api/token/', views.api_get_token),
     path('api/users/', views.api_user),
