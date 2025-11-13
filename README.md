@@ -4,4 +4,4 @@ Endpoints:git
 -artist
 -album
 
--link do render: insper-classroom-projeto-3-backend-fogao.onrender.com 
+-link do render: https://insper-classroom-projeto-3-backend-fogao.onrender.com
