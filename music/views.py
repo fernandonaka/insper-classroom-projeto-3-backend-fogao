@@ -109,7 +109,7 @@ def list_track(request, deezer_id:int):
 def list_track_all(request):
     """GET /favorite/track/ -> lista global (sem usuário)"""
     list_tracks = ListTrack.objects.filter(user=request.user)
-    return Response(FavoriteTrackSerializer(list_tracks, many=True).data)
+    return Response(ListTrackSerializer(list_tracks, many=True).data)
     
 
 
