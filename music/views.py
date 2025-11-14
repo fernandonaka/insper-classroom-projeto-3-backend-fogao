@@ -70,25 +70,28 @@ def list_track(request, deezer_id:int):
     GET    /favorite/<deezer_id>/  -> retorna 1 track listada (global)
     """
     if request.method == "POST":
-        r = requests.get(DEEZER_TRACK_URL.format(id=deezer_id), timeout=10)
-        if r.status_code != 200:
-            return Response({"detail": "Deezer não encontrou essa track."}, status=404)
-        data = r.json()
+        try:
+            r = requests.get(DEEZER_TRACK_URL.format(id=deezer_id), timeout=10)
+            if r.status_code != 200:
+                return Response({"detail": "Deezer não encontrou essa track."}, status=404)
+            data = r.json()
 
-        list_track, created = ListTrack.objects.get_or_create(
-            deezer_id=deezer_id,
-            user=request.user,
-            defaults={
-                "title": data.get("title", ""),
-                "artist_name": (data.get("artist") or {}).get("name", ""),
-                "album_title": (data.get("album") or {}).get("title"),
-                "album_cover": (data.get("album") or {}).get("cover_medium") or (data.get("album") or {}).get("cover"),
-                "preview_url": data.get("preview"),
-                "raw_json": data,
-            },
-        )
-        serializer = ListTrackSerializer(list_track)
-        return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+            list_track, created = ListTrack.objects.get_or_create(
+                deezer_id=deezer_id,
+                user=request.user,
+                defaults={
+                    "title": data.get("title", ""),
+                    "artist_name": (data.get("artist") or {}).get("name", ""),
+                    "album_title": (data.get("album") or {}).get("title"),
+                    "album_cover": (data.get("album") or {}).get("cover_medium") or (data.get("album") or {}).get("cover"),
+                    "preview_url": data.get("preview"),
+                    "raw_json": data,
+                },
+            )
+            serializer = ListTrackSerializer(list_track)
+            return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"detail": f"Erro ao adicionar track: {str(e)}"}, status=500)
 
     if request.method == "DELETE":
         deleted, _ = ListTrack.objects.filter(user=request.user, deezer_id=deezer_id).delete()
