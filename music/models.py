@@ -57,11 +57,11 @@ class FavoriteAlbum(models.Model):
 class ListTrack(models.Model):
     # Removido o FK para user
     deezer_id    = models.PositiveBigIntegerField()
-    title        = models.CharField(max_length=255)
-    artist_name  = models.CharField(max_length=255)
-    album_title  = models.CharField(max_length=255, blank=True, null=True)
-    album_cover  = models.URLField(blank=True, null=True)
-    preview_url  = models.URLField(blank=True, null=True)
+    title        = models.CharField(max_length=500)
+    artist_name  = models.CharField(max_length=500)
+    album_title  = models.CharField(max_length=500, blank=True, null=True)
+    album_cover  = models.URLField(max_length=500, blank=True, null=True)
+    preview_url  = models.URLField(max_length=500, blank=True, null=True)
     raw_json     = models.JSONField(blank=True, null=True)
     created_at   = models.DateTimeField(auto_now_add=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
